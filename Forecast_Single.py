@@ -8,19 +8,19 @@ import matplotlib.pyplot as plt
 plt.style.use('fivethirtyeight')
 from pylab import rcParams
 rcParams['figure.figsize'] = 10, 6
-from datetime import datetime, date
+from datetime import date
 from statsmodels.tsa.stattools import adfuller
 from statsmodels.tsa.seasonal import seasonal_decompose
-from statsmodels.tsa.arima_model import ARIMA
-#from pmdarima.arima import auto_arima
-from sklearn.metrics import mean_squared_error, mean_absolute_error
+from pmdarima.arima import auto_arima
+from sklearn.metrics import mean_squared_error
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 
 asset_name = '000831.SZ'
 xitu = Stock(asset_name)
 data = xitu.get_historical_price()
 data.sort_values(by=['Date'], inplace=True)
-data.columns = ['Date', asset_name]
+data.columns = ['Date', 'Price']
+
 # Feature Extraction
 data.index =pd.to_datetime(data['Date'])
 data['year'] = data.index.year
@@ -31,13 +31,13 @@ data['day'] = data.index.day
 data.sample(6,random_state=0)
 
 # EDA
-temp = data.groupby([data.index])['000831.SZ'].mean()
+temp = data.groupby([data.index])[asset_name].mean()
 temp.plot(figsize=(15,5), title='Adjusted Close Prices for Xitu', fontsize=14)
 
-data.groupby('month')['000831.SZ'].mean().plot.bar()
-data.groupby('month')['000831.SZ'].median().plot.bar()
-data.groupby('year')['000831.SZ'].mean().plot.bar()
-data.groupby('year')['000831.SZ'].median().plot.bar()
+data.groupby('month')[asset_name].mean().plot.bar()
+data.groupby('month')[asset_name].median().plot.bar()
+data.groupby('year')[asset_name].mean().plot.bar()
+data.groupby('year')[asset_name].median().plot.bar()
 
 # Build models for Time Series Forecasting
 # 1. split dataset for train and validation dataset
@@ -55,7 +55,7 @@ def check_acf(x):
 
 # 1. Apply Dickey Fuller test to check stationarity of the series
 def test_stationarity(timeseries):
-    ''' Visualize and display Dickey Fuller test result
+    ''' Visualized and display results from Dickey Fuller test
     '''
     # Determine rolling statistics
     rolmean = timeseries.rolling(12).mean()
@@ -89,7 +89,7 @@ test_stationarity(train[asset_name])
 # large ones, such as exponential transformation
 
 train_exp = np.exp(train[asset_name])
-test_exp = np.exp(test['000831.SZ'])
+test_exp = np.exp(test[asset_name])
 moving_avg = train_exp.rolling(12).mean()
 plt.plot(train_exp)
 plt.plot(moving_avg,color='red')
@@ -97,8 +97,9 @@ plt.show()
 
 test_stationarity(train_exp)
 
-train_log = np.log(train['000831.SZ'])
-test_log = np.log(test['000831.SZ'])
+# try logarithm transformation
+train_log = np.log(train[asset_name])
+test_log = np.log(test[asset_name])
 moving_avg = train_log.rolling(24).mean()
 plt.plot(train_log)
 plt.plot(moving_avg,color='red')
@@ -112,11 +113,9 @@ train_log_diff = train_log_moving_avg - train_log_moving_avg.shift(1)
 train_log_diff = train_log_diff.dropna()
 test_stationarity(train_log_diff)
 
-#%% Remove Seasonality
-# 
+#%% Remove seasonality
 
 #%%
-from pmdarima import auto_arima
 model = auto_arima(train_log_diff, trace=True, error_action='ignore', suppress_warnings=True)
 model.fit(train_log)
 forecast = model.predict(n_periods=len(test))
