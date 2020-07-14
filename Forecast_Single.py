@@ -17,9 +17,9 @@ from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 
 asset_name = '000831.SZ'
 xitu = Stock(asset_name)
-data = xitu.get_historical_price()
+data = xitu.get_data()
 data.sort_values(by=['Date'], inplace=True)
-data.columns = ['Date', 'Price']
+data.columns = ['Date', 'Price', 'Volume']
 
 # Feature Extraction
 data.index =pd.to_datetime(data['Date'])
@@ -34,10 +34,8 @@ data.sample(6,random_state=0)
 temp = data.groupby([data.index])[asset_name].mean()
 temp.plot(figsize=(15,5), title='Adjusted Close Prices for Xitu', fontsize=14)
 
-data.groupby('month')[asset_name].mean().plot.bar()
-data.groupby('month')[asset_name].median().plot.bar()
-data.groupby('year')[asset_name].mean().plot.bar()
-data.groupby('year')[asset_name].median().plot.bar()
+data.groupby('month')['Price'].mean().plot.bar()
+data.groupby('month')['price'].median().plot.bar()
 
 # Build models for Time Series Forecasting
 # 1. split dataset for train and validation dataset
@@ -51,7 +49,6 @@ def check_acf(x):
     ax[0] = plot_acf(x, ax=ax[0], lags=25)
     ax[1] = plot_pacf(x, ax=ax[1], lags=25)
     ax[2].plot(x)
-# Remove trend and seasonality from the data
 
 # 1. Apply Dickey Fuller test to check stationarity of the series
 def test_stationarity(timeseries):
@@ -108,23 +105,23 @@ train_log_moving_avg = train_log-moving_avg
 train_log_moving_avg.dropna(inplace=True)
 test_stationarity(train_log_moving_avg)
 
+# Remove trend and seasonality from the data
 # 2. stabilize the mean of the time series - Use differencing
 train_log_diff = train_log_moving_avg - train_log_moving_avg.shift(1)
 train_log_diff = train_log_diff.dropna()
 test_stationarity(train_log_diff)
 
-#%% Remove seasonality
-
-#%%
-model = auto_arima(train_log_diff, trace=True, error_action='ignore', suppress_warnings=True)
-model.fit(train_log)
-forecast = model.predict(n_periods=len(test))
+# Remove seasonality
+# checkresiduals
+model = auto_arima(train_diff_log, trace=True, error_action='ignore', suppress_warnings=True)
+model.fit(train_diff_log)
+forecast = np.exp(train_diff_log + model.predict(n_periods=len(test)))
 forecast = pd.DataFrame(forecast,index = test_log.index,columns=['Prediction'])
 #plot the predictions for validation set
-plt.plot(np.exp(train_log), label='Train')
-plt.plot(np.exp(test_log), label='Test')
-plt.plot(np.exp(forecast), label='Prediction')
-plt.title('Wukuang Xitu Stock Price Prediction')
+plt.plot(np.exp(train_log), label='Train',widthsize=0.7)
+plt.plot(np.exp(test_log), label='Test',widthsize=0.7)
+plt.plot(np.exp(forecast), label='Prediction',widthsize=0.7)
+plt.title(f'Stock Price Prediction for {asset_name}')
 plt.xlabel('Time')
 plt.ylabel('Actual Stock Price')
 plt.legend(loc='upper left', fontsize=8)
