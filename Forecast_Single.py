@@ -111,13 +111,18 @@ train_log_diff = train_log_moving_avg - train_log_moving_avg.shift(1)
 train_log_diff = train_log_diff.dropna()
 test_stationarity(train_log_diff)
 
+## TODO:
 # Remove seasonality
 # checkresiduals
+
+# Model Fitting
 model = auto_arima(train_diff_log, trace=True, error_action='ignore', suppress_warnings=True)
 model.fit(train_diff_log)
+
 forecast = np.exp(train_diff_log + model.predict(n_periods=len(test)))
 forecast = pd.DataFrame(forecast,index = test_log.index,columns=['Prediction'])
-#plot the predictions for validation set
+
+# Forecast Visualization - plot the predictions for validation set
 plt.plot(np.exp(train_log), label='Train',widthsize=0.7)
 plt.plot(np.exp(test_log), label='Test',widthsize=0.7)
 plt.plot(np.exp(forecast), label='Prediction',widthsize=0.7)
