@@ -25,7 +25,7 @@ class Stock:
         self.curr = date.today()
         self.start = date(2015,1,1)
 
-    def get_historical_price(self):
+    def get_data(self):
         from_date = yahoo_date(self.start)
         to_date = yahoo_date(self.curr)
         his_url = f'https://ca.finance.yahoo.com/quote/{self.number}/history?period1={from_date}&period2={to_date}&interval=1d&filter=history&frequency=1d'
@@ -37,13 +37,15 @@ class Stock:
         #data_date = []
         for i in range(1, len(datalist)-1):
             list_price = re.findall('"adjclose":(.*?)},',datalist[i], re.S)
+            volume = re.findall('"volume":(.*?),',datalist[i], re.S)
             if list_price !=  [] and list_price != 'null':
                 p = float(list_price[0])
+                v = int(volume[0])
                 t = re.findall('"date":(.*?),"', datalist[i], re.S)[0]
                 d = datetime.fromtimestamp(int(t)).date()
-                data_value.append([d,p])
-                #data_date.append(d)
-        df = pd.DataFrame(data_value, columns=['Date','Price'])
+                data_value.append([d,p,v])
+                
+        df = pd.DataFrame(data_value, columns=['Date','Price', 'Volume'])
         #df = pd.DataFrame(data_value, index = data_date, columns=[self.number])
         return df
     
